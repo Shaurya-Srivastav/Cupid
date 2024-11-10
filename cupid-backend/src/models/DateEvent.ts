@@ -2,14 +2,20 @@
 
 import mongoose, { Document, Schema } from 'mongoose';
 
+interface Coordinates {
+  latitude: number;
+  longitude: number;
+}
+
 interface ItineraryItem {
   name: string;
-  position: [number, number];
+  coordinates: Coordinates; // Changed from [number, number] to Coordinates object
   description: string;
   rating: number;
   cost: number;
   busy: boolean;
   imageUrl: string;
+  address: string; // Ensure address is included
 }
 
 interface JournalEntry {
@@ -25,14 +31,20 @@ export interface DateEventDocument extends Document {
   journalEntries: JournalEntry[];
 }
 
+const CoordinatesSchema = new Schema<Coordinates>({
+  latitude: { type: Number, required: true },
+  longitude: { type: Number, required: true },
+});
+
 const ItineraryItemSchema = new Schema<ItineraryItem>({
   name: { type: String, required: true },
-  position: { type: [Number], required: true },
+  coordinates: { type: CoordinatesSchema, required: true }, // Updated field
   description: { type: String },
   rating: { type: Number },
   cost: { type: Number },
   busy: { type: Boolean },
   imageUrl: { type: String },
+  address: { type: String }, // Added address field
 });
 
 const JournalEntrySchema = new Schema<JournalEntry>({
@@ -44,9 +56,10 @@ const JournalEntrySchema = new Schema<JournalEntry>({
 const DateEventSchema = new Schema<DateEventDocument>({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   date: { type: Date, required: true },
-  itinerary: [ItineraryItemSchema],
-  journalEntries: [JournalEntrySchema],
+  itinerary: [ItineraryItemSchema], // Array of ItineraryItem
+  journalEntries: [JournalEntrySchema], // Array of JournalEntry
 });
 
 const DateEvent = mongoose.model<DateEventDocument>('DateEvent', DateEventSchema);
+
 export default DateEvent;

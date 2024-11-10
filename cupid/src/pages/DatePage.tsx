@@ -21,25 +21,51 @@ import L from 'leaflet';
 import { FiArrowLeft } from 'react-icons/fi';
 import 'leaflet/dist/leaflet.css';
 
-interface Location {
+// Fix for default marker icons not displaying correctly in Leaflet
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl:
+    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl:
+    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl:
+    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+interface Coordinates {
+  latitude: number;
+  longitude: number;
+}
+
+interface ItineraryItem {
   name: string;
+  coordinates: Coordinates;
   description: string;
-  location: {
-    coordinates: [number, number];
-  };
-  address: string;
-  imageUrl: string;
   rating: number;
   cost: number;
-  journalEntry?: {
-    notes: string;
-    photos: string[];
-  };
+  busy: boolean;
+  imageUrl: string;
+  address: string;
+}
+
+interface JournalEntry {
+  locationName: string;
+  notes?: string;
+  photos?: string[];
+}
+
+interface DateEventResponse {
+  _id: string;
+  userId: string;
+  date: string;
+  itinerary: ItineraryItem[];
+  journalEntries: JournalEntry[];
 }
 
 const DatePage: React.FC = () => {
   const { dateId } = useParams<{ dateId: string }>();
-  const [itinerary, setItinerary] = useState<Location[]>([]);
+  const [itinerary, setItinerary] = useState<ItineraryItem[]>([]);
   const [journalEntries, setJournalEntries] = useState<{ [key: number]: string }>({});
   const [loading, setLoading] = useState<boolean>(true);
   const toast = useToast();
@@ -50,22 +76,27 @@ const DatePage: React.FC = () => {
   useEffect(() => {
     const fetchItinerary = async () => {
       try {
-        const response = await api.get(`/date/${dateId}`);
-        setItinerary(response.data.itinerary);
-        setJournalEntries(
-          response.data.itinerary.reduce(
-            (entries: any, location: Location, index: number) => {
+        const response = await api.get<DateEventResponse>(`/date/${dateId}`);
+        const data = response.data;
+
+        if (data && data.itinerary) {
+          setItinerary(data.itinerary);
+          setJournalEntries(
+            data.itinerary.reduce((entries: any, location: ItineraryItem, index: number) => {
               entries[index] = location.journalEntry?.notes || '';
               return entries;
-            },
-            {}
-          )
-        );
-      } catch (error) {
+            }, {})
+          );
+        } else {
+          throw new Error('Invalid itinerary data received.');
+        }
+      } catch (error: any) {
         console.error('Error fetching itinerary:', error);
         toast({
           title: 'Error',
-          description: 'Failed to load itinerary.',
+          description:
+            error.response?.data?.message ||
+            'Failed to load itinerary. Please try again later.',
           status: 'error',
           duration: 5000,
           isClosable: true,
@@ -105,11 +136,13 @@ const DatePage: React.FC = () => {
         duration: 5000,
         isClosable: true,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving journal entries:', error);
       toast({
         title: 'Error',
-        description: 'Failed to save journal entries.',
+        description:
+          error.response?.data?.message ||
+          'Failed to save journal entries. Please try again later.',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -121,6 +154,16 @@ const DatePage: React.FC = () => {
     return (
       <Flex justify="center" align="center" minH="60vh">
         <Spinner size="xl" />
+      </Flex>
+    );
+  }
+
+  if (!itinerary || itinerary.length === 0) {
+    return (
+      <Flex justify="center" align="center" minH="60vh">
+        <Text fontSize="xl" color="red.500">
+          No itinerary found for this date.
+        </Text>
       </Flex>
     );
   }
@@ -138,28 +181,16 @@ const DatePage: React.FC = () => {
 
       <Flex direction={{ base: 'column', md: 'row' }} gap={6}>
         {/* Itinerary List */}
-        <Box
-          flex="1"
-          bg="white"
-          p={4}
-          borderRadius="md"
-          boxShadow="md"
-        >
+        <Box flex="1" bg="white" p={4} borderRadius="md" boxShadow="md">
           <Text fontSize="xl" fontWeight="bold" mb={4}>
             Date Itinerary
           </Text>
           <VStack spacing={6} align="stretch">
             {itinerary.map((location, index) => (
-              <Box
-                key={index}
-                p={4}
-                borderRadius="md"
-                bg="gray.50"
-                boxShadow="sm"
-              >
+              <Box key={index} p={4} borderRadius="md" bg="gray.50" boxShadow="sm">
                 <HStack spacing={4} align="start">
                   <Image
-                    src={location.imageUrl}
+                    src={location.imageUrl || 'https://via.placeholder.com/80'}
                     alt={location.name}
                     boxSize="80px"
                     borderRadius="md"
@@ -175,12 +206,8 @@ const DatePage: React.FC = () => {
                     <Text fontSize="sm" color="gray.500">
                       Address: {location.address}
                     </Text>
-                    <Text fontSize="sm">
-                      Rating: {location.rating} ⭐
-                    </Text>
-                    <Text fontSize="sm">
-                      Cost: {'$'.repeat(location.cost)}
-                    </Text>
+                    <Text fontSize="sm">Rating: {location.rating} ⭐</Text>
+                    <Text fontSize="sm">Cost: {'$'.repeat(location.cost)}</Text>
                   </Box>
                 </HStack>
                 <Textarea
@@ -211,45 +238,52 @@ const DatePage: React.FC = () => {
           borderRadius="md"
           boxShadow="md"
         >
-          {itinerary.length > 0 && (
-            <MapContainer
-              center={itinerary[0].location.coordinates}
-              zoom={13}
-              style={{ height: '100%', width: '100%' }}
-            >
-              <TileLayer
-                attribution='&copy; OpenStreetMap contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              {itinerary.map((location, index) => (
-                <Marker
-                  key={index}
-                  position={location.location.coordinates}
-                  icon={
-                    new L.Icon({
-                      iconUrl:
-                        'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-                      iconSize: [25, 41],
-                      iconAnchor: [12, 41],
-                      popupAnchor: [1, -34],
-                      shadowSize: [41, 41],
-                    })
-                  }
-                >
-                  <Popup>
-                    <Text fontWeight="bold">{location.name}</Text>
-                    <Text>{location.description}</Text>
-                  </Popup>
-                </Marker>
-              ))}
-              <Polyline
-                positions={itinerary.map(
-                  (loc) => loc.location.coordinates
-                )}
-                color="blue"
-              />
-            </MapContainer>
-          )}
+          <MapContainer
+            center={[
+              itinerary[0].coordinates.latitude,
+              itinerary[0].coordinates.longitude,
+            ]}
+            zoom={13}
+            style={{ height: '100%', width: '100%' }}
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            {itinerary.map((location, index) => (
+              <Marker
+                key={index}
+                position={[
+                  location.coordinates.latitude,
+                  location.coordinates.longitude,
+                ]}
+                icon={
+                  new L.Icon({
+                    iconUrl:
+                      'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowUrl:
+                      'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+                    shadowSize: [41, 41],
+                  })
+                }
+              >
+                <Popup>
+                  <Text fontWeight="bold">{location.name}</Text>
+                  <Text>{location.description}</Text>
+                </Popup>
+              </Marker>
+            ))}
+            <Polyline
+              positions={itinerary.map((loc) => [
+                loc.coordinates.latitude,
+                loc.coordinates.longitude,
+              ])}
+              color="blue"
+            />
+          </MapContainer>
         </Box>
       </Flex>
     </Flex>

@@ -26,7 +26,7 @@ export const generateDate = async (
   }
 
   try {
-    // Generate itinerary using the OpenAI API
+    // Generate itinerary using the custom algorithm
     const itinerary = await generateItinerary(city, interests, budget);
 
     if (!itinerary || itinerary.length === 0) {
@@ -55,20 +55,10 @@ export const generateDate = async (
   } catch (error: any) {
     console.error('Error in generateDate:', error);
 
-    // Handle specific error responses for rate limit or other issues
-    if (error.response && error.response.status === 429) {
-      res.status(429).json({
-        message: 'Rate limit exceeded. Please try again later or upgrade your plan.',
-      });
-    } else if (error.message === 'Insufficient quota') {
-      res.status(402).json({
-        message: 'Insufficient quota. Please check your OpenAI billing settings.',
-      });
-    } else {
-      res.status(500).json({
-        message: 'An error occurred while generating the date. Please try again later.',
-      });
-    }
+    // Handle any other errors that might occur
+    res.status(500).json({
+      message: 'An error occurred while generating the date. Please try again later.',
+    });
   }
 };
 

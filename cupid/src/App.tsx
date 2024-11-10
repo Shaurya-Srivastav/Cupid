@@ -15,41 +15,40 @@ import AccountInfoPage from './pages/AccountInfoPage';
 import SignUpPage from './pages/SignUpPage';
 import LoginPage from './pages/LoginPage';
 import PrivateRoute from './components/PrivateRoute';
+import ErrorBoundary from './components/ErrorBoundry'; // Import ErrorBoundary
 
 const App = () => {
   return (
     <ChakraProvider theme={theme}>
-      <Router>
-        <Routes>
-          <Route path="/signup" element={<SignUpPage />} />
-          <Route path="/" element={<LoginPage />} />
-          <Route
-            path="/dashboard"
-            element={<PrivateRoute element={<DashboardPage />} />}
-          />
-          <Route
-            path="/book-date"
-            element={<PrivateRoute element={<BookDatePage />} />}
-          />
-          <Route
-            path="/loading"
-            element={<PrivateRoute element={<LoadingPage />} />}
-          />
-          <Route
-            path="/date"
-            element={<PrivateRoute element={<DatePage />} />}
-          />
-          <Route
-            path="/date/:id"
-            element={<PrivateRoute element={<DatePage />} />}
-          />
-          <Route
-            path="/account"
-            element={<PrivateRoute element={<AccountInfoPage />} />}
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Router>
+      <ErrorBoundary> {/* Wrap with ErrorBoundary */}
+        <Router>
+          <Routes>
+            <Route path="/signup" element={<SignUpPage />} />
+            <Route path="/" element={<LoginPage />} />
+            <Route
+              path="/dashboard"
+              element={<PrivateRoute element={<DashboardPage />} />}
+            />
+            <Route
+              path="/book-date"
+              element={<PrivateRoute element={<BookDatePage />} />}
+            />
+            <Route
+              path="/loading"
+              element={<PrivateRoute element={<LoadingPage />} />}
+            />
+            <Route
+              path="/date/:dateId"
+              element={<PrivateRoute element={<DatePage />} />}
+            />
+            <Route
+              path="/account"
+              element={<PrivateRoute element={<AccountInfoPage />} />}
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Router>
+      </ErrorBoundary>
     </ChakraProvider>
   );
 };
