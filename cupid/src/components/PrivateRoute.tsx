@@ -9,7 +9,9 @@ interface PrivateRouteProps {
 
 const PrivateRoute: React.FC<PrivateRouteProps> = ({ element }) => {
   const isAuthenticated = !!localStorage.getItem('token');
-  return isAuthenticated ? element : <Navigate to="/login" />;
+
+  // If the user is authenticated, render the element; otherwise, redirect to /login
+  return isAuthenticated ? element : <Navigate to="/login" replace />;
 };
 
 export default PrivateRoute;

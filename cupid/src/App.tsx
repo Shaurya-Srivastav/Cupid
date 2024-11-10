@@ -1,4 +1,5 @@
-// App.tsx
+// src/App.tsx
+
 import { ChakraProvider } from '@chakra-ui/react';
 import theme from './theme/theme';
 import {
@@ -15,16 +16,27 @@ import AccountInfoPage from './pages/AccountInfoPage';
 import SignUpPage from './pages/SignUpPage';
 import LoginPage from './pages/LoginPage';
 import PrivateRoute from './components/PrivateRoute';
-import ErrorBoundary from './components/ErrorBoundry'; // Import ErrorBoundary
+import ErrorBoundary from './components/ErrorBoundary';
 
 const App = () => {
+  const isAuthenticated = !!localStorage.getItem('token');
+
   return (
     <ChakraProvider theme={theme}>
-      <ErrorBoundary> {/* Wrap with ErrorBoundary */}
+      <ErrorBoundary>
         <Router>
           <Routes>
-            <Route path="/signup" element={<SignUpPage />} />
-            <Route path="/" element={<LoginPage />} />
+            {/* If the user is not authenticated, allow access to /login and /signup */}
+            <Route
+              path="/signup"
+              element={!isAuthenticated ? <SignUpPage /> : <Navigate to="/dashboard" replace />}
+            />
+            <Route
+              path="/login"
+              element={!isAuthenticated ? <LoginPage /> : <Navigate to="/dashboard" replace />}
+            />
+
+            {/* Protected routes */}
             <Route
               path="/dashboard"
               element={<PrivateRoute element={<DashboardPage />} />}
@@ -45,7 +57,9 @@ const App = () => {
               path="/account"
               element={<PrivateRoute element={<AccountInfoPage />} />}
             />
-            <Route path="*" element={<Navigate to="/" replace />} />
+
+            {/* Fallback route */}
+            <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </Router>
       </ErrorBoundary>

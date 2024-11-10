@@ -30,6 +30,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   // Fetch user profile from the API and set it in context
   const fetchUserProfile = async () => {
     try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        // If no token, do not attempt to fetch the profile
+        console.warn('No token found, skipping user profile fetch.');
+        return;
+      }
+
       const response = await api.get('/account'); // Adjust the endpoint if necessary
       setUser(response.data);
     } catch (error) {
@@ -44,7 +51,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Fetch the user profile once when the component mounts
+  // Fetch the user profile once when the component mounts, only if there is a token
   useEffect(() => {
     fetchUserProfile();
   }, []);
