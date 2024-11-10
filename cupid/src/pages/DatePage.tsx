@@ -79,11 +79,11 @@ const DatePage: React.FC = () => {
         const response = await api.get<DateEventResponse>(`/date/${dateId}`);
         const data = response.data;
 
-        if (data && data.itinerary) {
+        if (data && data.itinerary && data.journalEntries) {
           setItinerary(data.itinerary);
           setJournalEntries(
-            data.itinerary.reduce((entries: any, location: ItineraryItem, index: number) => {
-              entries[index] = location.journalEntry?.notes || '';
+            data.journalEntries.reduce((entries: any, journalEntry: JournalEntry, index: number) => {
+              entries[index] = journalEntry.notes || '';
               return entries;
             }, {})
           );
@@ -122,12 +122,14 @@ const DatePage: React.FC = () => {
 
   const handleSaveNotes = async () => {
     try {
+      const updatedJournalEntries = itinerary.map((location, index) => ({
+        locationName: location.name,
+        notes: journalEntries[index],
+        photos: [], // Assuming photos are handled elsewhere
+      }));
+
       await api.put(`/date/${dateId}/journal`, {
-        journalEntries: itinerary.map((location, index) => ({
-          locationName: location.name,
-          notes: journalEntries[index],
-          photos: location.journalEntry?.photos || [],
-        })),
+        journalEntries: updatedJournalEntries,
       });
       toast({
         title: 'Success',
@@ -240,8 +242,8 @@ const DatePage: React.FC = () => {
         >
           <MapContainer
             center={[
-              itinerary[0].coordinates.latitude,
-              itinerary[0].coordinates.longitude,
+              itinerary[0]?.coordinates?.latitude || 40.7128, // Default to NYC if undefined
+              itinerary[0]?.coordinates?.longitude || -74.0060,
             ]}
             zoom={13}
             style={{ height: '100%', width: '100%' }}
